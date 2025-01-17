@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="uz">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sayohat Paketlari</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-50">
+    <!-- Back to Home Button -->
+    <div class="bg-white shadow">
+      <div class="container mx-auto px-4 py-3">
+        <a
+          href="/"
+          class="inline-flex items-center text-gray-600 hover:text-black"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-5 w-5 mr-2"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
+            />
+          </svg>
+          Bosh sahifaga qaytish
+        </a>
+      </div>
+    </div>
+
+    <!-- Search Form -->
+    <div class="bg-white shadow mt-1">
+      <div class="container mx-auto px-4 py-6">
+        <form
+          class="grid grid-cols-1 md:grid-cols-4 gap-4"
+          method="post"
+          action="{% url 'search' %}"
+        >
+          {% csrf_token %}
+
+          <div>
+            <label class="block text-gray-700 mb-2">Destination</label>
+            <div class="relative">
+              <input
+                name="destination"
+                id="destination-input"
+                type="text"
+                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-black text-gray-900 font-medium"
+                placeholder="Where do you want to go?"
+                autocomplete="off"
+              />
+              <div
+                id="destination-results"
+                class="absolute w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg hidden z-50"
+              ></div>
+            </div>
+          </div>
+          <div>
+            <label class="block text-gray-700 mb-2">Qachondan</label>
+            <input
+              type="date"
+              name="start_date"
+              class="w-full px-4 py-2 border border-gray-300 rounded-md"
+            />
+          </div>
+          <div>
+            <label class="block text-gray-700 mb-2">Qachongacha</label>
+            <input
+              type="date"
+              name="end_date"
+              class="w-full px-4 py-2 border border-gray-300 rounded-md"
+            />
+          </div>
+          <div>
+            <label class="block text-gray-700 mb-2">Kishilar soni</label>
+            <select
+              name="travelers"
+              class="w-full px-4 py-2 border border-gray-300 rounded-md"
+            >
+              <option value="1">1 kishi</option>
+              <option value="2">2 kishi</option>
+              <option value="3">3 kishi</option>
+              <option value="9">4 kishi</option>
+            </select>
+          </div>
+          <div class="md:col-span-4">
+            <button
+              type="submit"
+              class="w-full bg-black text-white py-3 rounded-md hover:bg-gray-800"
+            >
+              Qayta qidirish
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Results Header -->
+    <header class="bg-white shadow mt-1">
+      <div class="container mx-auto px-4 py-6">
+        <h1 class="text-2xl font-bold text-gray-900">Qidiruv Natijalari</h1>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+      <div class="mb-6">
+        <p class="text-gray-600">
+          Jami {{ exact_matches|length }} ta aniq mos keluvchi tur topildi
+        </p>
+      </div>
+
+      <!-- Tour Package Cards -->
+      <div class="space-y-6 ">
+        <div class="search-results">
+          {% if exact_matches %}
+          <h2>Aniq mosliklar:</h2>
+          {% for tour in exact_matches %}
+          <div class="bg-white rounded-lg shadow p-6  m-5">
+            <div class="flex justify-between items-start">
+              <div>
+                <h2 class="text-xl font-semibold text-gray-900">
+                  {{ tour.name }}
+                </h2>
+                <p class="text-gray-600 mt-2">{{ tour.duration_days }} kun</p>
+                <p class="text-gray-600 mt-2">{% if tour.transport_type == 'BUS' %} Avtobus {% elif tour.transport_type == 'PLANE' %} Samolyot  {% elif tour.transport_type == 'TRAIN' %} Poyezd  {% endif %}</p>
+                
+              </div>
+              <div class="text-right">
+                <p class="text-2xl font-bold text-black">${{ tour.price }}</p>
+                <p class="text-gray-500">
+                  Umumiy {{tour.max_people}} kishi uchun
+                </p>
+                <div class="mt-5">
+
+
+                <a
+                  href="{% url 'book-tour' tour.id %}" 
+                  class=" bg-black text-white px-6 py-2 rounded hover:bg-gray-800"
+                >
+                  Band qilish
+              </a>
+            </div>
+
+              </div>
+            </div>
+          </div>
+          {% endfor %} {% endif %}
+        </div>
+      </div>
+
+      
+    </main>
+
+    <script>
+     
+
+      document.addEventListener("DOMContentLoaded", function () {
+        const destinationInput = document.getElementById("destination-input");
+        const destinationResults = document.getElementById(
+          "destination-results"
+        );
+        let timeoutId;
+
+        destinationInput.addEventListener("input", function () {
+          clearTimeout(timeoutId);
+          const query = this.value.trim();
+
+          if (query.length < 2) {
+            destinationResults.classList.add("hidden");
+            return;
+          }
+
+          timeoutId = setTimeout(() => {
+            fetch(
+              `/destination-autocomplete/?query=${encodeURIComponent(query)}`
+            )
+              .then((response) => response.json())
+              .then((data) => {
+                destinationResults.innerHTML = "";
+                if (data.length > 0) {
+                  data.forEach((item) => {
+                    const div = document.createElement("div");
+                    div.className = "p-3 hover:bg-gray-100 cursor-pointer";
+                    div.innerHTML = `
+                                <div class="font-medium">${item.name}</div>
+                                <div class="text-sm text-gray-600">${item.description}</div>
+                            `;
+                    div.addEventListener("click", () => {
+                      destinationInput.value = item.name;
+                      destinationResults.classList.add("hidden");
+                    });
+                    destinationResults.appendChild(div);
+                  });
+                  destinationResults.classList.remove("hidden");
+                } else {
+                  destinationResults.classList.add("hidden");
+                }
+              })
+              .catch((error) => {
+                console.error("Error:", error);
+                destinationResults.classList.add("hidden");
+              });
+          }, 300);
+        });
+
+        document.addEventListener("click", function (e) {
+          if (
+            !destinationInput.contains(e.target) &&
+            !destinationResults.contains(e.target)
+          ) {
+            destinationResults.classList.add("hidden");
+          }
+        });
+        const bookingForm = document.getElementById("booking-form");
+
+        bookingForm.addEventListener("submit", function (e) {
+          e.preventDefault();
+
+          const formData = new FormData(this);
+          const submitButton = this.querySelector('button[type="submit"]');
+
+          // Disable button during submission
+          submitButton.disabled = true;
+          submitButton.innerHTML = "Yuklanmoqda...";
+
+          fetch("/book-tour/", {
+            method: "POST",
+            body: formData,
+            headers: {
+              "X-CSRFToken": getCookie("csrftoken"),
+            },
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.status === "success") {
+                // Show success message
+                showMessage("success", data.message);
+                closeModal("booking-modal");
+              } else {
+                // Show error message
+                showMessage("error", data.message);
+              }
+            })
+            .catch((error) => {
+              showMessage(
+                "error",
+                "Xatolik yuz berdi. Iltimos qaytadan urinib ko'ring"
+              );
+            })
+            .finally(() => {
+              // Re-enable button
+              submitButton.disabled = false;
+              submitButton.innerHTML = "Band qilish";
+            });
+        });
+
+        // Helper function to get CSRF token
+        function getCookie(name) {
+          let cookieValue = null;
+          if (document.cookie && document.cookie !== "") {
+            const cookies = document.cookie.split(";");
+            for (let i = 0; i < cookies.length; i++) {
+              const cookie = cookies[i].trim();
+              if (cookie.substring(0, name.length + 1) === name + "=") {
+                cookieValue = decodeURIComponent(
+                  cookie.substring(name.length + 1)
+                );
+                break;
+              }
+            }
+          }
+          return cookieValue;
+        }
+
+        // Helper function to show messages
+        function showMessage(type, message) {
+          const messageDiv = document.createElement("div");
+          messageDiv.className = `fixed top-4 right-4 p-4 rounded-md ${
+            type === "success" ? "bg-green-500" : "bg-red-500"
+          } text-white`;
+          messageDiv.textContent = message;
+          document.body.appendChild(messageDiv);
+
+          setTimeout(() => {
+            messageDiv.remove();
+          }, 3000);
+        }
+      });
+    </script>
+
+
+  </body>
+</html>
